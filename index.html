@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slang-Splat: 3D Gaussian Splatting Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-color: #060913;
+      --panel-bg: rgba(13, 18, 33, 0.75);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --accent-color: #00f2fe;
+      --accent-gradient: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+      --glow-color: rgba(0, 242, 254, 0.25);
+      --success-color: #10b981;
+      --warning-color: #f59e0b;
+      --error-color: #ef4444;
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: var(--font-family);
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(0, 242, 254, 0.03) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(79, 172, 254, 0.04) 0%, transparent 45%);
+    }
+
+    /* Navbar / Header */
+    header {
+      backdrop-filter: blur(12px);
+      background-color: rgba(6, 9, 19, 0.8);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 1.25rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-glow {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent-gradient);
+      box-shadow: 0 0 12px var(--accent-color);
+      animation: pulse 2s infinite alternate;
+    }
+
+    header h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .system-status {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      font-size: 0.85rem;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0.35rem 0.75rem;
+      border-radius: 20px;
+      border: 1px solid var(--panel-border);
+    }
+
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--text-secondary);
+    }
+
+    .status-indicator.active {
+      background-color: var(--success-color);
+      box-shadow: 0 0 8px var(--success-color);
+    }
+
+    .status-indicator.training {
+      background-color: var(--warning-color);
+      box-shadow: 0 0 8px var(--warning-color);
+      animation: flash 1s infinite alternate;
+    }
+
+    /* Main Content Grid */
+    .app-container {
+      display: grid;
+      grid-template-columns: 320px 1fr 340px;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      flex-grow: 1;
+      max-width: 1800px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 1200px) {
+      .app-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Panel Styles */
+    .panel {
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      transition: all 0.3s ease;
+    }
+
+    .panel:hover {
+      border-color: rgba(0, 242, 254, 0.2);
+    }
+
+    .panel-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 600;
+      border-bottom: 1px solid var(--panel-border);
+      padding-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Control Inputs */
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .control-label {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .control-value {
+      font-weight: 600;
+      color: var(--accent-color);
+    }
+
+    select, input[type="number"], input[type="text"] {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      padding: 0.6rem 0.8rem;
+      font-family: var(--font-family);
+      font-size: 0.9rem;
+      outline: none;
+      transition: all 0.2s ease;
+      width: 100%;
+    }
+
+    select:focus, input[type="number"]:focus {
+      border-color: var(--accent-color);
+      box-shadow: 0 0 0 2px var(--glow-color);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-gradient);
+      cursor: pointer;
+      box-shadow: 0 0 8px var(--accent-color);
+      transition: transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* Buttons */
+    .btn {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--panel-border);
+      color: var(--text-primary);
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-family: var(--font-family);
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-primary {
+      background: var(--accent-gradient);
+      color: #060913;
+      border: none;
+      box-shadow: 0 4px 14px 0 var(--glow-color);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #00f2fe 30%, #4facfe 100%);
+      box-shadow: 0 6px 20px 0 var(--glow-color);
+      transform: translateY(-1px);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid var(--error-color);
+      color: #fca5a5;
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.35);
+    }
+
+    .btn-success {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid var(--success-color);
+      color: #a7f3d0;
+    }
+
+    .btn-success:hover {
+      background: rgba(16, 185, 129, 0.35);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    /* Central Viewport Panel */
+    .viewport-panel {
+      grid-column: 2;
+      display: flex;
+      flex-direction: column;
+      padding: 1.25rem;
+    }
+
+    .viewport-container {
+      position: relative;
+      background: #000;
+      border-radius: 12px;
+      flex-grow: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      min-height: 400px;
+    }
+
+    #viewport-image {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .viewport-overlay {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      background: rgba(6, 9, 19, 0.75);
+      backdrop-filter: blur(8px);
+      padding: 0.5rem 0.85rem;
+      border-radius: 8px;
+      border: 1px solid var(--panel-border);
+      font-size: 0.8rem;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .viewport-controls-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      gap: 1rem;
+    }
+
+    .view-presets {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .preset-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--panel-border);
+      color: var(--text-primary);
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .preset-btn:hover, .preset-btn.active {
+      background: rgba(0, 242, 254, 0.1);
+      border-color: var(--accent-color);
+      color: var(--accent-color);
+    }
+
+    /* Metric Stats Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--panel-border);
+      border-radius: 10px;
+      padding: 0.75rem;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-val {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    /* Right Panel (Analytics) */
+    .chart-container {
+      position: relative;
+      height: 160px;
+      width: 100%;
+    }
+
+    .console-log {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      padding: 0.75rem;
+      height: 120px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      color: #a7f3d0;
+    }
+
+    /* Animation Keyframes */
+    @keyframes pulse {
+      0% { opacity: 0.6; box-shadow: 0 0 6px var(--accent-color); }
+      100% { opacity: 1; box-shadow: 0 0 16px var(--accent-color); }
+    }
+
+    @keyframes flash {
+      0% { opacity: 0.4; }
+      100% { opacity: 1; }
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      user-select: none;
+    }
+
+    .checkbox-container input {
+      accent-color: var(--accent-color);
+      width: 16px;
+      height: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-container">
+      <div class="logo-glow"></div>
+      <h1>SLANG-SPLAT DEMO</h1>
+    </div>
+    <div class="system-status">
+      <div class="status-item">
+        <span class="status-indicator active" id="gpu-indicator"></span>
+        <span>L40 GPU (Vulkan)</span>
+      </div>
+      <div class="status-item">
+        <span class="status-indicator" id="train-indicator"></span>
+        <span id="status-text">Idle</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-container">
+    
+    <!-- LEFT PANEL: CONTROLS & INIT -->
+    <div class="panel">
+      <div class="panel-title">Configuration</div>
+      
+      <div class="control-group">
+        <label class="control-label">Dataset</label>
+        <select id="dataset-select" disabled>
+          <option value="garden">Garden (COLMAP reconstruction)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label class="control-label">Initialization Mode</label>
+        <select id="init-mode-select">
+          <option value="colmap">COLMAP Pointcloud</option>
+          <option value="diffused">Diffused Pointcloud (Jittered)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Max Gaussians Limit</span>
+          <span class="control-value" id="max-gaussians-val">5,000</span>
+        </div>
+        <input type="range" id="max-gaussians-slider" min="500" max="25000" step="500" value="5000">
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Initial Opacity</span>
+          <span class="control-value" id="initial-opacity-val">0.50</span>
+        </div>
+        <input type="range" id="initial-opacity-slider" min="0.05" max="1.0" step="0.05" value="0.5">
+      </div>
+
+      <div class="control-group">
+        <label class="control-label">Training Resolution</label>
+        <select id="resolution-select">
+          <option value="128">128 x 128 (Ultra Fast)</option>
+          <option value="256" selected>256 x 256 (Balanced)</option>
+          <option value="512">512 x 512 (High Quality)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Training Steps</span>
+          <span class="control-value" id="max-iters-val">1000</span>
+        </div>
+        <input type="range" id="max-iters-slider" min="100" max="3000" step="100" value="1000">
+      </div>
+
+      <button class="btn btn-success" id="btn-init">Initialize Gaussians</button>
+      
+      <div class="button-row">
+        <button class="btn btn-primary" id="btn-start" disabled>Train</button>
+        <button class="btn btn-danger" id="btn-stop" disabled>Pause</button>
+      </div>
+      
+      <button class="btn" id="btn-reset" disabled>Reset Scene</button>
+    </div>
+
+    <!-- MIDDLE PANEL: VIEWPORT -->
+    <div class="panel viewport-panel">
+      <div class="panel-title">
+        <span>3D Gaussian Render Viewport</span>
+        <label class="checkbox-container">
+          <input type="checkbox" id="auto-rotate-check"> Auto-Rotate Orbit
+        </label>
+      </div>
+
+      <div class="viewport-container">
+        <img id="viewport-image" src="" alt="Splat Viewport Preview">
+        <div class="viewport-overlay" id="viewport-info">
+          <div>Step: <span id="overlay-step">0</span></div>
+          <div>Loss: <span id="overlay-loss">0.0000</span></div>
+          <div>PSNR: <span id="overlay-psnr">0.00</span> dB</div>
+        </div>
+      </div>
+
+      <div class="viewport-controls-bottom">
+        <div class="view-presets">
+          <button class="preset-btn active" id="preset-front">Front</button>
+          <button class="preset-btn" id="preset-side">Side</button>
+          <button class="preset-btn" id="preset-top">Top</button>
+        </div>
+
+        <div class="control-group" style="width: 150px; margin-top: 0;">
+          <select id="camera-frame-select">
+            <option value="-1">-- Custom Orbit Camera --</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Orbit sliders -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:0.75rem;">
+        <div class="control-group">
+          <div class="control-label">Azimuth: <span class="control-value" id="orbit-azimuth-val">0°</span></div>
+          <input type="range" id="orbit-azimuth-slider" min="0" max="360" value="0">
+        </div>
+        <div class="control-group">
+          <div class="control-label">Elevation: <span class="control-value" id="orbit-elevation-val">20°</span></div>
+          <input type="range" id="orbit-elevation-slider" min="-80" max="80" value="20">
+        </div>
+      </div>
+      
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:0.5rem;">
+        <div class="control-group">
+          <div class="control-label">Distance Scale: <span class="control-value" id="orbit-distance-val">1.0x</span></div>
+          <input type="range" id="orbit-distance-slider" min="0.3" max="2.5" step="0.05" value="1.0">
+        </div>
+        <div class="control-group">
+          <div class="control-label">FOV: <span class="control-value" id="orbit-fov-val">60°</span></div>
+          <input type="range" id="orbit-fov-slider" min="30" max="90" value="60">
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Gaussians</div>
+          <div class="stat-val" id="stat-gaussians">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Loss</div>
+          <div class="stat-val" id="stat-loss">0.000</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">PSNR</div>
+          <div class="stat-val" id="stat-psnr">0.0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Speed</div>
+          <div class="stat-val" id="stat-speed">0 it/s</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: ANALYTICS & CHARTS -->
+    <div class="panel">
+      <div class="panel-title">Live Analytics</div>
+      
+      <div class="control-group">
+        <span class="control-label">Loss Curve</span>
+        <div class="chart-container">
+          <canvas id="lossChart"></canvas>
+        </div>
+      </div>
+
+      <div class="control-group" style="margin-top: 0.5rem;">
+        <span class="control-label">PSNR Progress (dB)</span>
+        <div class="chart-container">
+          <canvas id="psnrChart"></canvas>
+        </div>
+      </div>
+
+      <div class="control-group" style="margin-top: 0.5rem;">
+        <span class="control-label">System Terminal Logs</span>
+        <div class="console-log" id="console-logs">Console initialized. Ready for training.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // State management
+    let state = {
+      isTraining: false,
+      currentStep: 0,
+      maxIters: 1000,
+      loss: 0,
+      psnr: 0,
+      gaussians: 0,
+      speed: 0,
+      history: []
+    };
+
+    // Viewport camera parameters
+    let azimuth = 0;
+    let elevation = 20;
+    let distanceMult = 1.0;
+    let fov = 60;
+    let cameraMode = 'orbit'; // 'orbit' or 'frame'
+    let selectedFrameIdx = -1;
+
+    // Charts
+    let lossChart, psnrChart;
+
+    // Timer handles
+    let statusInterval = null;
+    let rotationInterval = null;
+    let currentRenderRequest = null;
+    
+    // UI elements
+    const viewportImage = document.getElementById('viewport-image');
+    const btnInit = document.getElementById('btn-init');
+    const btnStart = document.getElementById('btn-start');
+    const btnStop = document.getElementById('btn-stop');
+    const btnReset = document.getElementById('btn-reset');
+    const autoRotateCheck = document.getElementById('auto-rotate-check');
+    const statusText = document.getElementById('status-text');
+    const trainIndicator = document.getElementById('train-indicator');
+    const cameraSelect = document.getElementById('camera-frame-select');
+    const consoleLogs = document.getElementById('console-logs');
+
+    // UI slider values
+    const sliders = {
+      maxGaussians: { slider: document.getElementById('max-gaussians-slider'), val: document.getElementById('max-gaussians-val'), format: v => Number(v).toLocaleString() },
+      initialOpacity: { slider: document.getElementById('initial-opacity-slider'), val: document.getElementById('initial-opacity-val'), format: v => parseFloat(v).toFixed(2) },
+      maxIters: { slider: document.getElementById('max-iters-slider'), val: document.getElementById('max-iters-val'), format: v => v },
+      
+      orbitAzimuth: { slider: document.getElementById('orbit-azimuth-slider'), val: document.getElementById('orbit-azimuth-val'), format: v => v + '°' },
+      orbitElevation: { slider: document.getElementById('orbit-elevation-slider'), val: document.getElementById('orbit-elevation-val'), format: v => v + '°' },
+      orbitDistance: { slider: document.getElementById('orbit-distance-slider'), val: document.getElementById('orbit-distance-val'), format: v => parseFloat(v).toFixed(2) + 'x' },
+      orbitFov: { slider: document.getElementById('orbit-fov-slider'), val: document.getElementById('orbit-fov-val'), format: v => v + '°' }
+    };
+
+    // Set slider bindings
+    Object.keys(sliders).forEach(key => {
+      const entry = sliders[key];
+      entry.slider.addEventListener('input', (e) => {
+        entry.val.innerText = entry.format(e.target.value);
+        
+        // Handle orbit slider updates dynamically
+        if (key.startsWith('orbit')) {
+          cameraMode = 'orbit';
+          cameraSelect.value = "-1";
+          
+          azimuth = parseFloat(sliders.orbitAzimuth.slider.value);
+          elevation = parseFloat(sliders.orbitElevation.slider.value);
+          distanceMult = parseFloat(sliders.orbitDistance.slider.value);
+          fov = parseFloat(sliders.orbitFov.slider.value);
+          
+          triggerRender();
+        }
+      });
+    });
+
+    // Preset view button bindings
+    document.getElementById('preset-front').addEventListener('click', () => setOrbitPreset(0, 10, 1.0));
+    document.getElementById('preset-side').addEventListener('click', () => setOrbitPreset(90, 15, 1.0));
+    document.getElementById('preset-top').addEventListener('click', () => setOrbitPreset(0, 80, 1.2));
+
+    function setOrbitPreset(az, el, dist) {
+      document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+      cameraMode = 'orbit';
+      cameraSelect.value = "-1";
+      
+      azimuth = az;
+      elevation = el;
+      distanceMult = dist;
+      
+      sliders.orbitAzimuth.slider.value = az;
+      sliders.orbitAzimuth.val.innerText = az + '°';
+      sliders.orbitElevation.slider.value = el;
+      sliders.orbitElevation.val.innerText = el + '°';
+      sliders.orbitDistance.slider.value = dist;
+      sliders.orbitDistance.val.innerText = dist.toFixed(2) + 'x';
+      
+      triggerRender();
+    }
+
+    // Toggle presets active style
+    document.getElementById('preset-front').classList.add('active');
+
+    // Camera select bindings
+    cameraSelect.addEventListener('change', (e) => {
+      const val = parseInt(e.target.value);
+      if (val === -1) {
+        cameraMode = 'orbit';
+        triggerRender();
+      } else {
+        cameraMode = 'frame';
+        selectedFrameIdx = val;
+        triggerRender();
+      }
+    });
+
+    // Auto rotate binding
+    autoRotateCheck.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        startRotation();
+      } else {
+        stopRotation();
+      }
+    });
+
+    // Action button bindings
+    btnInit.addEventListener('click', initializeScene);
+    btnStart.addEventListener('click', startTraining);
+    btnStop.addEventListener('click', stopTraining);
+    btnReset.addEventListener('click', resetScene);
+
+    // Initialize Charts
+    function initCharts() {
+      const lossCtx = document.getElementById('lossChart').getContext('2d');
+      lossChart = new Chart(lossCtx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Loss',
+            data: [],
+            borderColor: '#00f2fe',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false,
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#9ca3af', font: { size: 9 } } },
+            y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#9ca3af', font: { size: 9 } } }
+          }
+        }
+      });
+
+      const psnrCtx = document.getElementById('psnrChart').getContext('2d');
+      psnrChart = new Chart(psnrCtx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'PSNR',
+            data: [],
+            borderColor: '#10b981',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false,
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#9ca3af', font: { size: 9 } } },
+            y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#9ca3af', font: { size: 9 } } }
+          }
+        }
+      });
+    }
+
+    function addLog(text) {
+      const timeStr = new Date().toLocaleTimeString();
+      consoleLogs.innerText += `\n[${timeStr}] ${text}`;
+      consoleLogs.scrollTop = consoleLogs.scrollHeight;
+    }
+
+    // API calls
+    async function initializeScene() {
+      btnInit.disabled = true;
+      addLog("Initializing scene on Vulkan device...");
+      
+      const payload = {
+        max_gaussians: parseInt(sliders.maxGaussians.slider.value),
+        initial_opacity: parseFloat(sliders.initialOpacity.slider.value),
+        init_mode: document.getElementById('init-mode-select').value,
+        width: parseInt(document.getElementById('resolution-select').value),
+        height: parseInt(document.getElementById('resolution-select').value),
+        max_iters: parseInt(sliders.maxIters.slider.value)
+      };
+
+      try {
+        const response = await fetch('/api/initialize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) throw new Error(await response.text());
+        
+        const data = await response.json();
+        addLog(`Scene initialized with ${data.gaussians.toLocaleString()} gaussians.`);
+        
+        // Update stats
+        document.getElementById('stat-gaussians').innerText = data.gaussians.toLocaleString();
+        
+        btnStart.disabled = false;
+        btnReset.disabled = false;
+        
+        // Reset charts
+        lossChart.data.labels = [];
+        lossChart.data.datasets[0].data = [];
+        lossChart.update();
+        
+        psnrChart.data.labels = [];
+        psnrChart.data.datasets[0].data = [];
+        psnrChart.update();
+        
+        triggerRender();
+        loadCameraFrames();
+        
+      } catch (err) {
+        addLog("Initialization failed: " + err.message);
+      } finally {
+        btnInit.disabled = false;
+      }
+    }
+
+    async function loadCameraFrames() {
+      try {
+        const res = await fetch('/api/frames');
+        const data = await res.json();
+        
+        // Clear previous options except custom
+        cameraSelect.innerHTML = '<option value="-1">-- Custom Orbit Camera --</option>';
+        
+        data.frames.forEach(frame => {
+          const opt = document.createElement('option');
+          opt.value = frame.index;
+          opt.innerText = `Camera View #${frame.index} (${frame.width}x${frame.height})`;
+          cameraSelect.appendChild(opt);
+        });
+      } catch (err) {
+        console.error("Failed to load frames: ", err);
+      }
+    }
+
+    async function startTraining() {
+      btnStart.disabled = true;
+      try {
+        const response = await fetch('/api/start', { method: 'POST' });
+        const data = await response.json();
+        addLog("Training loop started on GPU...");
+        
+        btnStop.disabled = false;
+        
+        // Start status polling
+        if (!statusInterval) {
+          statusInterval = setInterval(pollStatus, 400);
+        }
+      } catch (err) {
+        addLog("Failed to start training: " + err.message);
+        btnStart.disabled = false;
+      }
+    }
+
+    async function stopTraining() {
+      btnStop.disabled = true;
+      try {
+        await fetch('/api/stop', { method: 'POST' });
+        addLog("Training paused.");
+        
+        // Stop status polling
+        clearInterval(statusInterval);
+        statusInterval = null;
+        
+        btnStart.disabled = false;
+        pollStatus(); // Final poll
+      } catch (err) {
+        addLog("Failed to stop training: " + err.message);
+        btnStop.disabled = false;
+      }
+    }
+
+    async function resetScene() {
+      btnReset.disabled = true;
+      addLog("Resetting scene to initial points...");
+      try {
+        await fetch('/api/reset', { method: 'POST' });
+        addLog("Scene reset complete.");
+        
+        state.currentStep = 0;
+        state.loss = 0;
+        state.psnr = 0;
+        
+        clearInterval(statusInterval);
+        statusInterval = null;
+        
+        btnStart.disabled = false;
+        btnStop.disabled = true;
+        
+        pollStatus();
+        triggerRender();
+      } catch (err) {
+        addLog("Failed to reset scene: " + err.message);
+      } finally {
+        btnReset.disabled = false;
+      }
+    }
+
+    async function pollStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        
+        state = data;
+        
+        // Update stats cards
+        document.getElementById('stat-loss').innerText = data.loss.toFixed(4);
+        document.getElementById('stat-psnr').innerText = data.psnr.toFixed(1) + ' dB';
+        document.getElementById('stat-gaussians').innerText = data.gaussians.toLocaleString();
+        
+        const itSec = data.elapsed_time > 0 ? (data.current_step / data.elapsed_time) : 0;
+        document.getElementById('stat-speed').innerText = itSec.toFixed(1) + ' it/s';
+
+        // Update overlays
+        document.getElementById('overlay-step').innerText = `${data.current_step} / ${data.max_iters}`;
+        document.getElementById('overlay-loss').innerText = data.loss.toFixed(4);
+        document.getElementById('overlay-psnr').innerText = data.psnr.toFixed(2);
+
+        // Update indicators
+        if (data.is_training) {
+          statusText.innerText = "Training...";
+          trainIndicator.className = "status-indicator training";
+        } else {
+          statusText.innerText = "Idle";
+          trainIndicator.className = "status-indicator";
+          btnStop.disabled = true;
+          btnStart.disabled = false;
+          if (statusInterval) {
+            clearInterval(statusInterval);
+            statusInterval = null;
+          }
+        }
+
+        // Update charts
+        if (data.history && data.history.length > 0) {
+          const steps = data.history.map(h => h.step);
+          const losses = data.history.map(h => h.loss);
+          const psnrs = data.history.map(h => h.psnr);
+          
+          lossChart.data.labels = steps;
+          lossChart.data.datasets[0].data = losses;
+          lossChart.update('none'); // silent update
+          
+          psnrChart.data.labels = steps;
+          psnrChart.data.datasets[0].data = psnrs;
+          psnrChart.update('none'); // silent update
+        }
+
+        // Periodically refresh the viewport during training
+        if (data.is_training) {
+          triggerRender();
+        }
+
+      } catch (err) {
+        console.error("Status polling failed:", err);
+      }
+    }
+
+    // Viewport rendering
+    function triggerRender() {
+      // Debounce render requests to not overwhelm Vulkan queue
+      if (currentRenderRequest) {
+        return;
+      }
+      
+      let url = '';
+      if (cameraMode === 'orbit') {
+        url = `/api/render/orbit?azimuth=${azimuth}&elevation=${elevation}&distance_mult=${distanceMult}&fov=${fov}`;
+      } else {
+        url = `/api/render/frame/${selectedFrameIdx}`;
+      }
+      
+      currentRenderRequest = true;
+      
+      // We append a timestamp to bypass image caching
+      const img = new Image();
+      img.onload = () => {
+        viewportImage.src = img.src;
+        currentRenderRequest = false;
+      };
+      img.onerror = () => {
+        currentRenderRequest = false;
+      };
+      img.src = url + '&t=' + Date.now();
+    }
+
+    // Auto rotate logic
+    function startRotation() {
+      if (rotationInterval) return;
+      rotationInterval = setInterval(() => {
+        // Increment azimuth
+        azimuth = (azimuth + 1) % 360;
+        sliders.orbitAzimuth.slider.value = azimuth;
+        sliders.orbitAzimuth.val.innerText = azimuth + '°';
+        triggerRender();
+      }, 50);
+    }
+
+    function stopRotation() {
+      if (rotationInterval) {
+        clearInterval(rotationInterval);
+        rotationInterval = null;
+      }
+    }
+
+    // Initial load
+    window.addEventListener('DOMContentLoaded', () => {
+      initCharts();
+      initializeScene(); // Start with default scene
+    });
+  </script>
+</body>
+</html>

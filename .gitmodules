@@ -1,0 +1,6 @@
+[submodule "slang-splat"]
+	path = slang-splat
+	url = https://github.com/abdshomad/slang-splat.git
+[submodule "demo-wrapper-only"]
+	path = demo-wrapper-only
+	url = https://github.com/abdshomad/demo-wrapper-only.git

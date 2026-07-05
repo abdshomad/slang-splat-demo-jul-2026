@@ -1,0 +1,18 @@
+[project]
+name = "slang-splat-demo-jul-2026"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.139.0",
+    "matplotlib>=3.9",
+    "numpy>=1.26",
+    "pillow>=10.4",
+    "plyfile>=1.1",
+    "scipy>=1.14",
+    "slangpy==0.42.0",
+    "tqdm>=4.67",
+    "trimesh>=4.5",
+    "uvicorn>=0.50.0",
+]
