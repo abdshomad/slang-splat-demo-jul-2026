@@ -43,6 +43,16 @@ The premium web application dashboard provides:
 5. **View Presets & Camera Selects**: Instant switching between Front, Side, and Top views, or selecting from actual COLMAP dataset camera frames.
 6. **Initialization Configs**: Adjust initial opacity, initialization pointcloud mode (COLMAP or Diffused), and training resolution constraints dynamically.
 
+## 📸 Screenshots & E2E Verification
+
+Features are verified automatically using [run_e2e_test.py](file:///home/aiserver/LABS/DIGITAL-TWIN-3D/slang-splat-demo-jul-2026/run_e2e_test.py) (via Playwright). The verification snapshots are saved in compliance with `demo-wrapper-only` specifications:
+
+- [01 Before Training Start](file:///home/aiserver/LABS/DIGITAL-TWIN-3D/slang-splat-demo-jul-2026/screenshots/01_slang_splat/01_web_demo/01_before_training_start.png) - Shows the dashboard with default pre-initialized scene rendering and 0 training steps.
+- [02 After Training Start](file:///home/aiserver/LABS/DIGITAL-TWIN-3D/slang-splat-demo-jul-2026/screenshots/01_slang_splat/01_web_demo/02_after_training_start.png) - Shows active training state, descending loss, and ascending PSNR analytics.
+- [03 After Training Pause](file:///home/aiserver/LABS/DIGITAL-TWIN-3D/slang-splat-demo-jul-2026/screenshots/01_slang_splat/01_web_demo/03_after_training_pause.png) - Verifies training pause behavior and stats preservation.
+- [04 After Camera Orbit](file:///home/aiserver/LABS/DIGITAL-TWIN-3D/slang-splat-demo-jul-2026/screenshots/01_slang_splat/01_web_demo/04_after_camera_orbit.png) - Verifies custom orbit rotation viewpoint rendering.
+- [05 After Scene Reset](file:///home/aiserver/LABS/DIGITAL-TWIN-3D/slang-splat-demo-jul-2026/screenshots/01_slang_splat/01_web_demo/05_after_scene_reset.png) - Confirms parameters and trained Gaussians reset to initial state.
+
 ## 📂 Project Structure
 
 - `main.py` - FastAPI backend wrapping the slang-splat library in a thread-safe training loop.
