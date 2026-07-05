@@ -49,23 +49,23 @@ Features are verified automatically using [run_e2e_test.py](file:///home/aiserve
 
 ### 01 Before Training Start
 Shows the dashboard with default pre-initialized scene rendering and 0 training steps.
-![01 Before Training Start](/home/aiserver/LABS/DIGITAL-TWIN-3D/slang-splat-demo-jul-2026/screenshots/01_slang_splat/01_web_demo/01_before_training_start.png)
+![01 Before Training Start](screenshots/01_slang_splat/01_web_demo/01_before_training_start.png)
 
 ### 02 After Training Start
 Shows active training state, descending loss, and ascending PSNR analytics.
-![02 After Training Start](/home/aiserver/LABS/DIGITAL-TWIN-3D/slang-splat-demo-jul-2026/screenshots/01_slang_splat/01_web_demo/02_after_training_start.png)
+![02 After Training Start](screenshots/01_slang_splat/01_web_demo/02_after_training_start.png)
 
 ### 03 After Training Pause
 Verifies training pause behavior and stats preservation.
-![03 After Training Pause](/home/aiserver/LABS/DIGITAL-TWIN-3D/slang-splat-demo-jul-2026/screenshots/01_slang_splat/01_web_demo/03_after_training_pause.png)
+![03 After Training Pause](screenshots/01_slang_splat/01_web_demo/03_after_training_pause.png)
 
 ### 04 After Camera Orbit
 Verifies custom orbit rotation viewpoint rendering.
-![04 After Camera Orbit](/home/aiserver/LABS/DIGITAL-TWIN-3D/slang-splat-demo-jul-2026/screenshots/01_slang_splat/01_web_demo/04_after_camera_orbit.png)
+![04 After Camera Orbit](screenshots/01_slang_splat/01_web_demo/04_after_camera_orbit.png)
 
 ### 05 After Scene Reset
 Confirms parameters and trained Gaussians reset to initial state.
-![05 After Scene Reset](/home/aiserver/LABS/DIGITAL-TWIN-3D/slang-splat-demo-jul-2026/screenshots/01_slang_splat/01_web_demo/05_after_scene_reset.png)
+![05 After Scene Reset](screenshots/01_slang_splat/01_web_demo/05_after_scene_reset.png)
 
 ## 📂 Project Structure
 
